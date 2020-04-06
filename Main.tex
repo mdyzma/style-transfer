@@ -1,0 +1,496 @@
+\documentclass[a4paper,conference]{IEEEtran}
+%
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{float}
+\usepackage{amsmath,bm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usepackage{slashbox}
+\usepackage{caption}
+\usepackage{amssymb}
+\usepackage{arydshln}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage{stackengine}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\newcommand\IncG[2][]{\addstackgap{%
+  \raisebox{-.5\height}{\includegraphics[#1]{#2}}}}
+
+
+
+% Used for displaying a sample figure. If possible, figure files should
+% be included in EPS format.
+%
+% If you use the hyperref package, please uncomment the following line
+% to display URLs in blue roman font according to Springer's eBook style:
+% \renewcommand\UrlFont{\color{blue}\rmfamily}
+
+\newcommand{\ResidualLayerNumber}{\beta}
+
+
+% correct bad hyphenation here
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+
+\begin{document}
+
+%
+% paper title
+% Titles are generally capitalized except for words such as a, an, and, as,
+% at, but, by, for, in, nor, of, on, or, the, to and up, which are usually
+% not capitalized unless they are the first or last word of the title.
+% Linebreaks \\ can be used within to get better formatting as desired.
+% Do not put math or special symbols in the title.
+\title{Heritage Portal - Real time video neural style transfer on mobile devices}
+
+
+% author names and affiliations
+% use a multiple column layout for up to three different
+% affiliations
+\author{
+\IEEEauthorblockN{Wojciech Dudzik}
+\IEEEauthorblockA{Netguru S.A., \\Poznań, Poland \\
+Email: wojciech.dudzik@netguru.com}
+\and
+\IEEEauthorblockN{Damian Kosowski}
+\IEEEauthorblockA{Netguru S.A., \\Poznań, Poland \\
+Email: damian.kosowski@netguru.com}
+}
+
+
+
+% make the title area
+\maketitle
+
+% As a general rule, do not put math, special symbols or citations
+% in the abstract
+\begin{abstract}
+Neural style transfer is a well known branch of deep learning research with many interesting works and two major drawbacks. Most of the works in the field are hard to use by non expert user and substantial hardware resources are required. In this work we present a solution to both of these problems by applying neural style transfer for real time video (over 25 frames per second) application on mobile devices. We investigate the works on achieving temporal coherence and present the idea of fine-tuning already trained models for achieving stable video. What is more we also analyze the impact of the common deep neural network  architecture on the performance on mobile devices with regard to number of layers and filters present. In the experiment section we present the results of our work with respect to the iOS devices and discuss the problems present in current Android devices as well as future possibilities. At the end we present the qualitative results of stylization and quantitative results of performance tested on iPhone 11 Pro. The presented work is incorporated in Heritage Portal application available at Apple's App Store.
+\end{abstract}
+
+
+%https://github.com/huihuangzhao/Neural-Style-Transfer-Papers-Code
+
+\section{Introduction}
+
+Paintings as a form of art was  accompanying us through the history presenting all kind of things from the might kings portraits through, historic battles to ordinary daily activities. It all changed with the invention of photography and later the digital photography. Nowadays most of us carry a smart phone equipped with HD camera. In the past, re-drawing an image in a particular style required a well-trained artist and lots of time (and money).  This problem has been studied by both artist and computer science researchers for over two decades within the field of non-photorealistic rendering (NPR). However, most of these NPR stylisation algorithms are designed for particular artistic styles and cannot be easily extended to other styles. Moreover, the common limitation of these methods is that they only use low-level image features and often fail to capture image structures effectively. The first to use convolution neural networks (CNN) for that task was Gatys et. al. \cite{Gatys2016ImageST,GatysEB15archivix}. They proposed a neural algorithm for automatic image style transfer, which refines a random noise to a stylized image iteratively constrained by a content loss and a style loss. This led to multiple works that followed the original and improved its drawbacks. In our work we made it possible to use these NST method for videos on mobile phone, especially on iphone's. In order to do that we investigate the problem of temporal coherence among existing methods and refined the neural network architecture, therefore  our main contribution are as follow:
+
+\begin{itemize}
+\item Real time application of neural style transfer to videos on mobile devices (iOS),
+\item Investigation on achieving temporal coherence with existing methods,
+\item Analyzing the size of the models present in literature, and proposing new smaller architecture for the task.
+\end{itemize}
+
+The structure of this paper is following, related work for image and video style transfer will be first reviewed in Section 2. Methods that we propose, network architecture, and achieving temporal coherence will be presented in Section 3. In Section 4, the experiment results will be reported and analyzed, where we will show performance on mobile devices.
+
+%Image style transfer is a task that aims to render the content of one
+%image with the style of another,
+
+  
+\section{Related work}
+
+
+In this section we will briefly review the selected methods for NST related to our work, while for more comprehensive review we recommend \cite{NeuralStyleTransferReview}.  The first method for NST was proposed by Gatys et. al. \cite{Gatys2016ImageST}. They demonstrated very exciting results which catches eyes in both academia and industry. That method opened many new possibilities and attracted multiple works \cite{JohnsonAL16,DumoulinSK16,Champandard16,LuanPSB17,GatysEBHS16}. One the best successors was proposed by Johnson et al. \cite{JohnsonAL16} with the feed-forward perceptual losses model using a pre-trained VGG \cite{Simonyan15} to compute them. This work allowed real-time inference speed while maintaining good style quality.  A natural way to extend this image processing technique to videos is to perform a certain image transformation frame by frame. However, this scheme inevitably brings temporal inconsistencies and thus causes severe flicker artifacts for the methods that consider single image transformation. One of the methods to solve this issue is the method of Ruder et al. \cite{RuderDB16} which is specifically designed for video style transfer. However, it relies on time consuming computations (dense optical flow calculation), and takes several minutes to process a single frame which make it not applicable for real-time usage. To obtain a consistent and fast video style transfer method, some real-time or near real-time models have recently been developed. 
+
+Using a feed-forward network design, Huang et. al. \cite{Huang_2017_CVPR} proposed a model similar to the Johnson's one  \cite{JohnsonAL16} with an additional temporal loss. This model provide faster inference times since it neither estimates optical flows nor uses information about the previous frame in the inference stage.  One more recent development is  Gao et. al. \cite{Reconet} whose model does not estimate optical flows but involves ground-truth optical flows only in loss calculation in the training stage. The use of the ground-truth optical flow allows to obtain occlusion mask which marks regions that are unchanged in between frames. Additionally, temporal loss is considered not only on output image but also at the feature level of DNN. This lightweight and feed-forward network can be considered to be the one of the fastest approach for video NST. 
+
+On the other hand applying these methods for achieving real-time neural style transfer on mobile devices (smartphones) introduce more strict requirements about computation capabilities. There was several noticeable works dealing with that subject \cite{TinyTransformer,iosApp,Pictory}. They are focusing on running and optimizing current methods on mobile platforms using specialized ARM instuctions - NEON or  GPU while all of them perform only image to image style transfer.
+Other examples include \cite{Novecento} and very popular Prisma application. Both of them relay on processing images on server side (although Prisma added later option for offline processing) so they heavily relay on internet connection as well as both of them enable only processing of single images. As pace of progression in mobile devices is very fast the computation capabilities grows much bigger each year. This can be clearly seen in Ignatov et. al\cite{aiMobileBenchmark} where they present a review about smartphones performance regarding machine learning and deep learning in particular by analyzing devices with Android system. The introduction of 4-th generation (according to their designations) neural processing units (NPU) for Android phones as well as unifying programming interface with frameworks like Tensorflow Lite, Android NNAPI or CoreML (for iPhones) makes it easier for any deep neural network application. Before that deploying a single model to multiple devices was difficult as one would need to integrated it with multiple different SDKs prepared by each of chip manufacturer e.g. MNN, Mace. Each of them provided also certain limitations in term of supported operations, model quantization options and hardware usage.
+
+This motivated us to check the work in both field of NST and mobile applications of DNN and propose improvements by combining the methods from those fields and propose a real time video neural style transfer on mobile devices.
+
+
+ 
+\section{Proposed Method}
+
+We are proposing a reliable method for achieving real-time neural style transfer on mobile devices. In our method we are primarily focused on iPhones as there are still some differences between them and Android based phones which we will address in Section \ref{Andorid_and_ios}. In this section we will present the network architecture and training procedure. 
+
+\subsection{Network architecture}
+
+In the Fig. \ref{networkArchitecture} we present the architecture of our network which is a the architecture present in \cite{Reconet}. In the \cite{Reconet} paper the architecture of the network with regard to layers sizes was as presented in Tab. \ref{tableWithArchitecture}. We provide a few modifications to the number of filters at each layer (showed in last column of Tab. \ref{tableWithArchitecture})  as well as removing the TanH opertation at the last layer and ReLU operations in the up-sampling part of the network. Moreover, all of the kernels have size $3 \times 3$. We are using reflection padding for each of the convolutions. For up-sample layer we are using nearest neighbors method. The architecture of residual layer architecture is presented in Fig. \ref{residualBlockArchitecture}. The $\ResidualLayerNumber$ is introduced in order to investigate the influence of number of residual layers on the final result of stylization. 
+
+
+%moze dodac cytowanie do residual layer
+\begin{figure}[ht]
+\caption{Architecture of residual block}
+\label{residualBlockArchitecture}
+\centering
+\includegraphics[scale=0.5]{figures/ResidualBlock.png}
+\end{figure}
+
+
+
+%Tabela z architekturą tutaj oryginał versus ta nasza
+\begin{table}[ht]
+\scriptsize
+\caption{Detailed layer by layer architecture}
+\label{tableWithArchitecture}
+\centering
+\begin{tabular}{cccc}
+\hline 
+Layer & Type & Filters in \cite{Reconet} & Our filters \\ 
+\hline 
+1  & Input &  &  \\ 
+\hline 
+2 & Conv + instnorm + Relu & $ 48$  & $\alpha \cdot 32$ \\ 
+\hline 
+3 & Conv + instnorm + Relu (stride 2) & $96$ & $\alpha \cdot 48$ \\ 
+\hline 
+4& Conv + instnorm + Relu (stride 2) & $192$ & $\alpha \cdot 64$ \\ 
+\hline 
+5 & Residual  $\times  4 \cdot \ResidualLayerNumber$   & $192$ &  $\alpha \cdot 64$ \\ 
+\hline
+6 & Upsample & &\\
+\hline 
+7 & Conv + instnorm & $96$ & $\alpha \cdot 48$ \\ 
+\hline 
+8 & Upsample & &\\
+\hline 
+9 & Conv + instnorm & $48$ & $\alpha \cdot 32$ \\ 
+\hline 
+10 & Conv  & $3$ & $3$ \\ 
+\hline 
+\end{tabular} 
+\end{table}
+
+
+\begin{figure*}[ht]
+\caption{Reconet architecture \cite{Reconet}.}
+\label{networkArchitecture}
+\centering
+\includegraphics[width=0.95\textwidth]{figures/reconet_architecture.png}
+\end{figure*}
+
+%Convolutional layers use filter sizes of 3 × 3, padding of 1, and stride of 1.
+%– The rectified linear unit (ReLU) layer is an elementwise function ReLU(x) = max{x, 0}.
+%– The instance norm (InstanceNorm) layer standardizes each feature channel independently to have 0 mean and a standard
+%deviation of 1. This layer has shown impressive performance in image generation networks [34].
+%– Maxpooling layers downsample by a factor of 2 by using filter sizes of 2 × 2 and stride of 2.
+%– Nearest neighbor (NN) upsampling layers upsample by a factor of 2 by using filter sizes of 2 × 2 and stride of 2.
+
+
+\subsection{Training procedure}
+
+As there is no code published by authors of \cite{Reconet}, we tracked a open source implementation at github webpage\footnote{\url{https://github.com/EmptySamurai/pytorch-reconet}}. As far as we know this implementation closely reassembles the work presented in the paper but shows additional artifacts (in forms of white bubbles) that were not mentioned in original work. This is presented in the Fig. \ref{fig:problems}c where artifacts can be easily spotted. An interesting point is that more detailed explanation to this problem is presented in \cite{karras2019analyzing}. They discovered that artifacts appear because of instance normalization which on contrary is considered as better than batch normalization \cite{instanceNormalization} for style transfer. The solution proposed by the author of this repository is to incorporate filter response normalization \cite{FRNlayer}. All instance normalization are replaced by filter response normalization (FRN) and all ReLU operations are replaced by threshloded linear unit (TLU). As this solution works and removed the problematic artifacts it cannot be deployed on mobile devices because FRN is not support by any major framework at the time of writing. Of course it can be computed on the general CPU but this results in major performance drop. On the other hand our own implementation of ReCoNet presents faded colors which are presented in Fig. \ref{fig:problems}b  after training and the final effect is not as good as expected (\ref{fig:problems}a). This expected result is achieved by the same network as in \ref{fig:problems}b-c but trained without temporal loss element. In our opinion there might be some implementation details that we missing which are crucial for reaching the desired result. Thus we came with an idea of two stage training as follow:
+
+
+%Although style present in Fig. \ref{fig:problems}a is different than Fig. \ref{fig:problems}c we are not discussing 
+
+\begin{figure*}[ht]
+%\begin{tabular}{p{.3\textwidth}p{.3\textwidth}p{.3\textwidth}}
+\begin{tabular}{ccc}
+
+
+\IncG[width=.3\textwidth]{expected.png}  &
+\IncG[width=.3\textwidth]{badcolors.png} &
+\IncG[width=.3\textwidth]{artifacts.png}   
+\\
+a) Expected & b) Bad colors & c) Artifacts 
+
+\end{tabular}
+\caption{Problems that turned out on achieving temporal coherence}
+\label{fig:problems}
+\end{figure*}
+
+
+\begin{enumerate}
+\item Training only with content and style loss as in \cite{JohnsonAL16},
+\item Fine-tuning network with feature and output temporal losses added (losses came from  \cite{Reconet}).
+\end{enumerate}
+
+During the first stage to the training we adopt the content loss $\mathcal{L}_{content}$, the style loss  $\mathcal{L}_{style}$ and the total variation regularizer  $\mathcal{L}_{tv}$ in perceptual losses model based on \cite{JohnsonAL16}. The final loss function for the first stage is:
+
+\begin{equation}
+ \mathcal{L} (t) = \alpha \mathcal{L}_{content} + \beta \mathcal{L}_{style}  + \gamma \mathcal{L}_{tv}
+\end{equation}
+
+
+During the second stage of fine-tuning and achieving temporal consistency we adopt the solution presented in \cite{Reconet}, where  
+
+\begin{equation}
+\begin{aligned}
+ \mathcal{L} (t-1,t) =  \sum_{i \in \{t-1, t\}} \left( \alpha \mathcal{L}_{content}(i) + \beta \mathcal{L}_{style}(i)  + \gamma \mathcal{L}_{tv}(i) \right) \\ + \lambda_{f} \mathcal{L}_{temp,f}(t-1,t) + \lambda_{o} \mathcal{L}_{temp,o}(t-1,t)
+ \end{aligned}
+\end{equation}
+
+where $\lambda_{f} \mathcal{L}_{temp,f}(t-1,t) + \lambda_{o} \mathcal{L}_{temp,o}(t-1,t)$ are feature temporal and output temporal loss components respectively as presented in \cite{Reconet}. The key idea in achieving temporal consistency is the usage of optical flow information between the consecutive frames and occlusion masks for marking the areas which should stay the same in between frames. By doing this during the training we are able to provide model that do not need those information at the inference stage thus making it a lot faster as estimating dense optical flow is costly operation (time and computational wise). The content loss and the style loss utilize feature maps at relu2\_2 layer and [relu1\_2, relu2\_2, relu3\_3, relu4\_3] layers respectively. We used VGG16 pretrained in ImageNet for calculating all of the losses.
+
+
+
+
+
+%\textcolor{red}{Tutaj można dodać wyjaśnienie poszczególnych lossów jako streszczenie ReCoNet - głowne idee i równania bo w tej chwili trochę mało to mówi jak nie przeczyta się innych papierów}
+
+%\subsection{CoreML and AR Core}
+%\item CoreML support with the iPhone dedicated NPU - ease of use 
+%\item Talk about AR - section that can be written by Milan Sawicki
+
+%\textcolor{red}{Will be prepared by Milan Sawicki after application release}
+
+
+
+%\begin{itemize}
+%\item Discuss the problems on Android platform which stopped us from deploying the application (yet) implementation in Pytorch instead of tensorflow
+%\item problems with model conversion between formats (with regard to the performance side - added transpositions in the process)
+%\item Pytorch lack of GPU/NNAPI support (for now)
+%\item Tensorflow Lite limitations with GPU (limited set of operations)
+%\item Tensorflow Lite policy about switching to CPU in case of unsupported  operation with GPU/NNAPI
+%\item Lack of drivers and documentation of NNAPI as it heavily depended on the hardware (not all operations are supported, some chips needs DNN to be quantized and so on, reference the AI benchmark with 1-4th  NPU generations)
+%\item
+%\end{itemize}
+
+
+
+\section{Experiments and Discussion}
+
+%\item Describe the solution for style transfer on iOS how we did that, measure the performance, show some examples (links to some videos would be grate, both in term of iOS application and style transfer model)
+%\item The measurement of performance of DNN vs. the rest of application (maybe battery drain)
+
+For the training of network we used Coco \cite{cocoDataset} and MPI Sintel \cite{Mpi_sintel}  datasets. All image frames are resized to 256 × 256 for first stage of the training. In the second phase using MPI Sintel used 640x360 resolution. We implement our style transfer pipeline on PyTorch 1.3  with Cuda 10.1 and cuDNN 7.1.4. All of the trainings were performed on a single GTX 1080 GPU. In next subsections we will discuss the differences between deploying DNN on Android and iPhone system 
+
+
+
+
+The results of two stage training procedure are presented in the Fig. \ref{fig:differentStyle}. The first row presents the style images, in second row we present the result of model after the first phase of training while in the third row we present the same images after incorporating fine-tuning for stabilization of video. As we can see, especially on example of Weeping Woman and Scream introducing temporal coherence into the model weakened the style that was learned. This encompasses mainly of smoothing out the resulting image so the colors are more unified across wide area of image. As presented achieving the desired stabilization introduce some trade-off in case of some particular styles. As an advantage over other methods our two stage training approach can provide both models (with and without stabilization) thus letting the author decide what effect is desired.
+
+\begin{figure*}[ht]
+%\begin{tabular}{p{.23\textwidth}p{.23\textwidth}p{.23\textwidth}p{.23\textwidth}}
+\begin{tabular}{cccc}
+
+\hline
+a) Scream  & b) Mona Lisa & c) Weeping Woman & d) Starry Night \\
+\hline
+\IncG[width=.21\textwidth,height=.23\textwidth]{figures/style/scream.jpg} &
+\IncG[width=.18\textwidth,height=.23\textwidth]{figures/style/MonaLisa.jpg} &
+\IncG[width=.21\textwidth,height=.23\textwidth]{figures/style/picasso.jpg} &
+\IncG[width=.23\textwidth,height=.21\textwidth]{figures/style/starry.jpg}
+\\
+
+\IncG[width=.23\textwidth,height=.18\textwidth]{figures/differentStyle/img_scream_small.jpg} &
+\IncG[width=.23\textwidth,height=.18\textwidth]{figures/differentStyle/img_monalisa_small.jpg} &
+\IncG[width=.23\textwidth,height=.18\textwidth]{figures/differentStyle/img_picasso_small.jpg} &
+\IncG[width=.23\textwidth,height=.18\textwidth]{figures/differentStyle/img_starry_night_small.jpg}
+\\
+
+\IncG[width=.23\textwidth,height=.18\textwidth]{figures/differentStyle/img_after_scream_small.jpg} &
+\IncG[width=.23\textwidth,height=.18\textwidth]{figures/differentStyle/img_after_monalisa_small.jpg} &
+\IncG[width=.23\textwidth,height=.18\textwidth]{figures/differentStyle/img_after_picasso_small.jpg} &
+\IncG[width=.23\textwidth,height=.18\textwidth]{figures/differentStyle/img_after_starry_night_small.jpg}
+\\
+\hline
+
+\end{tabular}
+\caption{Examples of different stylisation achieved with presented training technique. First row is style image, second is result after first phase of training, the last row presents final model results. }
+\label{fig:differentStyle}
+\end{figure*}
+
+
+
+\subsection{iOS vs Android implementation}
+\label{Andorid_and_ios}
+
+There are some noticeable differences between Android and iOS devices. First of all Apple introduced dedicated NPU with the A11 Bionic back in 2017. Although not available to 3rd party applications, the next generation A12 changed that in 2018. This allows for very fast and power efficient calculations with the dedicated NPU. What is more thanks to Apple closed ecosystem, they were able to provide the CoreML library that hides the technical details from developer. As we investigated our neural network work fast also on the Apple devices without the NPU as CoreML can also exploit the GPU. This kind of switch between hardware on different based on the device is done automatically. The last advantage of the CoreML is that it support a wide variety of formats as well as provides proper conversion mechanism for models e.g ONNX $\rightarrow$ CoreML, Keras $\rightarrow$ CoreML. 
+
+
+The Android devices are not so unified which brings a number of problems with the effective development. The first to follow, there is no single library to cover multiple uses cases while for the DNN we think that Tensorflow Lite is the most promising solution. Although being relatively  mature library it is not a silver bullet as depending on the backend used (CPU, GPU or dedicated hardware) different operations (layers) might be supported even to the point where the kernel of bigger size is not supported. This involves an automatic mechanism of switching computation from the desired hardware to the CPU which often is the slowest possible option. These situations must be carefully examined and addressed. One more problem with using the Tensorflow Lite comes with the conversions of models trained in different frameworks. As many conversion tools exists they might introduce additional layers. A greate example can be shown on converting Pytorch to Tensorflow through common format of ONNX. As these frameworks depends on the different layout of data (NHWC vs NCHW) any kind of conversion adds transform layers which significantly impact the performance. In the case of our application we saw 30-40\% drop in the frames per second.
+The another library which is worth mentioning is Pytorch, which with the version 1.3 allowed the execution of the models on mobile devices. While this is promising development it still lack the GPU and Andorid Neural Network API (NNAPI) support which currently is the major drawback . The variety of Android devices results also with another problem. There are multiple device manufactures and chip manufactures which results in slow adoption of the NNAPI. What is more the usage of NNAPI depends on the drivers provided by the device manufacturer. With no drivers provided it defaults to the use of CPU while on the other hand, there might be major differences between smartphones models in terms of supporting the NNAPI as some of them might support only quantized (INT8) or float (FP32) only models. All of that make it hard to predict how deployed neural network model will behave on the devices. As mentioned in Ignatov et. al\cite{aiMobileBenchmark} the newest generation of NPU seems to provide a wide common set of supported operations while supporting both quantized and float models at the same time. All of that shows a great progress made in last years on the Android device which should made it easier to deploy deep learning model on both of the platforms as till now Android was inferior in comparison with iOS.
+
+
+%While it was introduced to replace the previous Tensorflow Mobile there are still some limitations. 
+%It allows to write delegates to custom hardware that is supporting
+%\item CoreML support with the iPhone dedicated NPU - ease of use 
+%Discuss the problems on Android platform which stopped us from deploying the application (yet) implementation in Pytorch instead of tensorflow
+%problems with model conversion between formats (with regard to the performance side - added transpositions in the process)
+%Pytorch lack of GPU/NNAPI support (for now)
+%\item Tensorflow Lite limitations with GPU (limited set of operations)
+%\item Tensorflow Lite policy about switching to CPU in case of unsupported  operation with GPU/NNAPI
+%\item Lack of drivers and documentation of NNAPI as it heavily depended on the hardware (not all operations are supported, some chips needs DNN to be quantized and so on, reference the AI benchmark with 1-4th  NPU generati
+
+\subsection{Investigation on size of network}
+
+
+%\item Examples (without and with stabilisation) - videos(links) and photos
+
+
+
+\begin{table*}[]
+\centering
+\scriptsize
+\caption{Configurations tested}
+\label{tab:my-table}
+\begin{tabular}{rrrrrrrrr}
+\hline
+Id & $\alpha$ & $\beta$ & parameters & \% of ReCoNet & Size (MB) & \% of ReCoNet & FPS ($480\times320$) & FPS ($320\times240$)\\ \hline
+1  & 1.000 & 1    & 469731     & 15.16         & 1.79     & 15.14         & 12.26       & 19.57       \\
+2  & 0.750 & 1    & 267627     & 8.64          & 1.02     & 8.63          & 14.91       & 21.41       \\
+3  & 0.500 & 1    & 121971     & 3.94          & 0.47     & 3.98          & 21.91       & 25.17       \\
+4  & 0.250 & 1    & 32763      & 1.06          & 0.12     & 1.02          & 27.72       & 40.91       \\
+5  & 0.125 & 1    & 9327       & 0.30          & 0.04     & 0.34          & 34.08       & 46.41       \\ \hline
+6  & 1.000 & 0.75 & 307683     & 9.93          & 1.17      & 9.90          & 15.10        & 18.53       \\
+7  & 0.750 & 0.75 & 173739     & 5.61          & 0.66      & 5.58          & 16.66       & 21.52       \\
+8  & 0.500 & 0.75 & 77811      & 2.51          & 0.30       & 2.54          & 21.28       & 34.77       \\
+9  & 0.250 & 0.75 & 19899      & 0.64          & 0.08      & 0.68          & 38.63       & 51.37       \\
+10 & 0.125 & 0.75 & 5199       & 0.17          & 0.02      & 0.17          & 49.92       & 60.41       \\ \hline
+11 & 1.000 & 0.5  & 233571     & 7.54          & 0.89      & 7.53          & 15.66       & 18.93       \\
+12 & 0.750 & 0.5  & 131979     & 4.26          & 0.50       & 4.23          & 18.21       & 23.43       \\
+13 & 0.500 & 0.5  & 59187      & 1.91          & 0.23      & 1.95          & 22.64       & 37.68       \\
+14 & 0.250 & 0.5  & 15195      & 0.49          & 0.06      & 0.51          & 40.01       & 53.90        \\
+15 & 0.125 & 0.5  & 3999       & 0.13          & 0.02      & 0.17          & 51.92       & 62.43     \\ \hline
+
+\end{tabular}
+\end{table*}
+
+
+
+
+\begin{figure}[ht!]
+\caption{A graph showing FPS versus number of parameters in DNN model tested with iPhone 11 Pro. The x-axis is presented in logarithmic scale with scale factor of $1000$}
+\label{graphFPS}
+\centering
+\includegraphics[width=0.49\textwidth]{chart.png}
+\end{figure}
+
+
+
+In Tab. \ref{tableWithArchitecture} we introduced $\alpha$ and $\ResidualLayerNumber$  parameters for the number of filters and number of residual layers in order to check the influence of these parameters on the achieved style transfer. In the Tab. \ref{tab:my-table} we present the results of our experiments. The qualitative (visual) comparison for the network trained with "Scream" by Munch style is presented in the Fig. \ref{fig:comparison} while the content and style image for these models are presented in Fig. \ref{fig:content_and_style}. All of the networks were trained on the exactly same settings for hyperparameters.
+
+As we can see in the Fig. \ref{fig:comparison} the smallest networks (ids 5, 10, 15) provided very poor results with multiple deformations that make it hard to recognize the original content image. At the same time networks denoted with ids 4,9 and 14 provides much better results and were able to capture both style and content. But in our opinion these results come with a tradeoff between the keeping good looking stylization and remaining proper content. What is interesting we see that the model 14 is able to provide the most fine details (look at the clock tower of Big Ben) from those three while being the smallest. Thus we think that the model capacity of all of these networks (4,9,14) should be sufficient for learning the style while it can be seen that achieving it may depend on the initialization of network parameters. On the other hand we think that it is hard recognize the differences between the rest of the models. As there are some clear difference visible between them in our opinion the style and content is represented with the same level of detail and choosing one over another would be a matter of individual preferences about the certain style. 
+
+
+The reduction of the size of model on disk is proportional to the reduction on number of parameters as the parameters of networks take the most space in saved model as presented in Tab. \ref{tableWithArchitecture}. We are also showing the reduction in both of those terms comparing it to ReCoNet \cite{Reconet}. The size of the network is a important matter when deploying it to mobile devices as the size of application may heavily depend on that. When each network provides a single artist style having multiple styles in one application can quickly grows its size. The original ReCoNet network size is $11.82$ MB while our experiments ranges form $1.79$ to $0.02$ MB. Thus we are able to provide multiple models while keeping smaller memory footprint. The performance of our model in terms of frames per second (FPS) were measured on the iphone 11 Pro with 2 different resolutions of the input for model. The measurement was done by applying the model to the video with resolution $1920\times1080$, length of $21$ seconds coded with H.264 and 25 FPS. The results present in Tab. \ref{tableWithArchitecture} are averaged speed of each model after processing this video (resizing image to network input size is included into this measurement). As we can see decreasing the number of parameters for network gives non linear growth in speed of processing. This trend is presented in the Fig. \ref{graphFPS}. We can see the logarithmic relation between the number of FPS and number of parameters. The difference between the models  1 and  2 is around $200 000$ parameters while this shrinking provides only 2 more FPS on averaged in favor of the smaller model. The further shrinking of models (ids 3, 8, 13) provides near real-time performance with 22 FPS on the $480\times320$ resolution and real-time performance (over 25 FPS) with $320\times240$ resolution. While we are not aware of the hardware design of the Apple chips what can be seen is that removing residual layers have rather small impact on the overall performance of the model while $\alpha$ is much more important. This can be especially seen when comparing models with $\alpha=1.0$ and different $\ResidualLayerNumber$. Despite great overall difference in the number of parameters between them the final performance stays on the same level for $320\times240$ resolution. In this case we can see the fluctuation of measurement where smaller models have worse performance as we were simulating real use case with some applications running in background. To conclude these experiments we clearly see that the size of the network, in terms of parameter numbers and the model size on the disk can be greatly reduced without loosing the expected result while we are able to provide real-time performance on mobile devices.  For the development of Heritage Portal application we choose the model with  $\alpha=0.5$ and $\ResidualLayerNumber=1$ which in our opinion provided nice looking results and sufficient performance while also significantly reduced size.
+
+
+
+
+\begin{figure}[ht!]
+%\begin{tabular}{p{.25\textwidth}p{.2\textwidth}}
+\begin{tabular}{cc}
+
+\IncG[width=.25\textwidth,height=.2\textwidth]{figures/content/ben.jpg} &
+\IncG[width=.2\textwidth,height=.2\textwidth]{figures/style/scream.jpg} 
+\\
+a) Content image  & b) Style image 
+\end{tabular}
+\caption{ Content and style images for experiments in Fig. \ref{fig:comparison}}
+\label{fig:content_and_style}
+\end{figure}
+
+
+
+
+%\begin{figure*}[ht]
+%\begin{tabular}{p{.02\textwidth}p{.19\textwidth}p{.19\textwidth}p{.19\textwidth}p{.19\textwidth}p{.19\textwidth}}
+%
+%\hline
+%$\beta$ &   \multicolumn{5}{c}{$\alpha$} 
+%\\
+%\hline
+%& \multicolumn{1}{c}{1} & \multicolumn{1}{c}{0.75}   & \multicolumn{1}{c}{0.5} & \multicolumn{1}{c}{0.25}  & \multicolumn{1}{c}{0.125} 
+%\\
+%\rotatebox[origin=c]{90}{1} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/211_ben_800_600.jpg} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/212_ben_800_600.jpg} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/213_ben_800_600.jpg} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/214_ben_800_600.jpg} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/215_ben_800_600.jpg} 
+%\\
+%
+%\rotatebox[origin=c]{90}{0.75} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/251_ben_800_600.jpg} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/252_ben_800_600.jpg} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/253_ben_800_600.jpg} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/254_ben_800_600.jpg} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/255_ben_800_600.jpg} 
+%\\
+%
+%\rotatebox[origin=c]{90}{0.5} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/222_ben_800_600.jpg} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/223_ben_800_600.jpg} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/224_ben_800_600.jpg} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/225_ben_800_600.jpg} &
+%\IncG[width=.19\textwidth,height=.19\textwidth]{figures/226_ben_800_600.jpg} 
+%\\
+%\hline
+%\end{tabular}
+%\caption{ \textcolor{red}{Poprawić tą tabelę, może pokazać 4 obrazki w rzędzie, na pewno przedstawić różne style}}
+%\label{fig:comparison}
+%\end{figure*}
+
+
+
+
+
+
+
+
+
+\begin{figure*}[ht!]
+%\begin{tabular}{p{.008\textwidth}p{.29\textwidth}p{.29\textwidth}p{.29\textwidth}}
+\begin{tabular}{cccc}
+
+\hline
+$\alpha$ &   \multicolumn{3}{c}{$\beta$} 
+\\
+\hline
+& \multicolumn{1}{c}{1} & \multicolumn{1}{c}{0.75}   & \multicolumn{1}{c}{0.5}  \\
+
+\rotatebox[origin=c]{90}{1} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/211_ben_800_600.jpg} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/251_ben_800_600.jpg} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/222_ben_800_600.jpg} 
+\\
+
+\rotatebox[origin=c]{90}{0.75} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/212_ben_800_600.jpg} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/252_ben_800_600.jpg} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/223_ben_800_600.jpg}
+\\
+
+\rotatebox[origin=c]{90}{0.5} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/213_ben_800_600.jpg} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/253_ben_800_600.jpg} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/224_ben_800_600.jpg} 
+\\
+
+\rotatebox[origin=c]{90}{0.25} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/214_ben_800_600.jpg} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/254_ben_800_600.jpg} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/224_ben_800_600.jpg} 
+\\
+
+\rotatebox[origin=c]{90}{0.125} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/215_ben_800_600.jpg} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/255_ben_800_600.jpg} &
+\IncG[width=.3\textwidth,height=.215\textwidth]{figures/226_ben_800_600.jpg} 
+\\
+\hline
+\end{tabular}
+\caption{ Qualitative comparison of stylization performed by networks with different size}
+\label{fig:comparison}
+\end{figure*}
+
+
+
+\section{Conclusions}
+
+In this paper, we present a feed-forward neural network based on ReCoNet \cite{Reconet} for real-time video style transfer on mobile devices. We showed technical challenges in deploying CNN to mobile devices and the differences between Android and iPhone ecosystem with recommendation for any future work. This includes that we need to be very careful about using certain layers and even kernel sizes in order to achieve expected performance. We also proposed novel way of achieving temporal consistency by re-training already available models. By this we made it easy to use models that are trained with other methods. At last we also investigated the network size regarding the number of filters and number of residual layers and showed that shrinking them to $3.94\%$ number of parameters present in \cite{Reconet} we are still able to achieve good looking results showed by experiments. The results of that work can be checked with Heritage Portal mobile application on iOS devices.
+
+
+%\section*{Acknowledgments}
+%
+%W. Dudzik was co-financed by the European Union through the European Social Fund (grant POWR.03.02.00-00-I029)
+
+
+\bibliographystyle{IEEEtran}
+\bibliography{mybibliography}
+
+
+\end{document}
